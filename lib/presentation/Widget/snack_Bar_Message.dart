@@ -5,7 +5,7 @@ void snackBarMessage(BuildContext context, String message,
     [bool isErrorMessage = false]) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(message),
+      content: Text(message,style: const TextStyle(color: Colors.white),),
       backgroundColor: isErrorMessage ? Colors.red : AppColors.themeColors,
     ),
   );

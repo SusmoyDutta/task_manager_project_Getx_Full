@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/models/AutoControlerEmailVerify.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
+import 'package:get/get.dart';
 import 'package:task_manager_project/presentation/Widget/background_widget.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
+import 'package:task_manager_project/presentation/controllers/set_password_controller.dart';
 import 'package:task_manager_project/presentation/screen/auth/Sing_in_screen.dart';
 
 class SetPassword extends StatefulWidget {
-  const SetPassword({super.key});
+  const SetPassword({super.key, required this.email, required this.otp});
+
+  final String email;
+  final String otp;
 
   @override
   State<SetPassword> createState() => _SetPasswordState();
@@ -20,8 +22,8 @@ class _SetPasswordState extends State<SetPassword> {
       TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _obscureTextTE = true;
-  bool _setPasswordInProgress = false;
-  EmailResponse emailResponse = EmailResponse();
+  final SetPasswordController _setPasswordController =
+      Get.find<SetPasswordController>();
 
   @override
   Widget build(BuildContext context) {
@@ -89,16 +91,13 @@ class _SetPasswordState extends State<SetPassword> {
                   ),
                   TextFormField(
                     controller: _confirmPasswordTeController,
-                    obscureText: _obscureTextTE,
                     validator: (String? value) {
-                      if (value?.isEmpty ?? true) {
-                        return 'Enter you Confirm Password';
-                      }
-                      if (value!.length <= 6) {
-                        return 'Confirm Password should more then 6 letter';
+                      if (value?.trim().isEmpty ?? true) {
+                        return 'Enter your Email';
                       }
                       return null;
                     },
+                    obscureText: _obscureTextTE,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(
                         Icons.lock_outlined,
@@ -123,28 +122,28 @@ class _SetPasswordState extends State<SetPassword> {
                   ),
                   SizedBox(
                     width: double.infinity,
-                    child: Visibility(
-                      visible: _setPasswordInProgress ==false,
-                      replacement: const Center(child: CircularProgressIndicator(),),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _getSetPassword();
-                          }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SingIn(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            color: Colors.white,
+                    child: GetBuilder<SetPasswordController>(
+                      builder: (setPasswordController) {
+                        return Visibility(
+                          visible: _setPasswordController.inProgress == false,
+                          replacement: const Center(
+                            child: CircularProgressIndicator(),
                           ),
-                        ),
-                      ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                _getSetPassword(widget.email, widget.otp);
+                              }
+                            },
+                            child: const Text(
+                              'Confirm',
+                              style: TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
                     ),
                   ),
                   const SizedBox(
@@ -159,12 +158,13 @@ class _SetPasswordState extends State<SetPassword> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SingIn(),
-                              ),
-                              (route) => false);
+                          Get.off(()=>const SingIn());
+                          // Navigator.pushAndRemoveUntil(
+                          //     context,
+                          //     MaterialPageRoute(
+                          //       builder: (context) => const SingIn(),
+                          //     ),
+                          //     (route) => false);
                         },
                         child: const Text(
                           'Sing in',
@@ -181,26 +181,23 @@ class _SetPasswordState extends State<SetPassword> {
     );
   }
 
-  Future<void> _getSetPassword() async {
-    _setPasswordInProgress = true;
-    setState(() {});
-    Map<String, dynamic> input = {
-      "email": emailResponse.data?.accepted ?? '',
-      "OTP":emailResponse.data?.messageId?? '',
-      "password": _newPasswordTEController.text,
-    };
-    final responce =
-        await NetWorkCaller.postRequest(Urls.recoverResetPass, input);
-    if (responce.isSuccess) {
-      responce.statusCode ==200;
-    } else {
-      _setPasswordInProgress = false;
-      setState(() {});
+  Future<void> _getSetPassword(String email, String otp) async {
+    final result = await _setPasswordController.setPassword(
+        email, otp, _confirmPasswordTeController.text.trim());
+    if (result) {
       if (mounted) {
-        snackBarMessage(
-            context,
-            responce.errorMessage ??
-                'Your confirm Password is failed! Pleased try age.');
+        Get.off(()=>const SingIn());
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => const SingIn(),
+        //   ),
+        // );
+        snackBarMessage(context, 'Password is success');
+      }
+    } else {
+      if (mounted) {
+        snackBarMessage(context, _setPasswordController.errorMessage, true);
       }
     }
   }

@@ -1,4 +1,4 @@
-import 'package:task_manager_project/data/models/SingInUserData.dart';
+import 'package:task_manager_project/data/models/singIn_user_data.dart';
 
 class SingInResponce {
   String? status;

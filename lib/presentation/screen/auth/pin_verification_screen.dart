@@ -1,16 +1,16 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/models/AutoControlerEmailVerify.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
 import 'package:task_manager_project/presentation/Widget/background_widget.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
+import 'package:task_manager_project/presentation/controllers/pin_verification_controller.dart';
 import 'package:task_manager_project/presentation/screen/auth/Set_Password_screen.dart';
 import 'package:task_manager_project/presentation/screen/auth/Sing_in_screen.dart';
 
 class PinVerification extends StatefulWidget {
-  const PinVerification({super.key});
+  const PinVerification({super.key, required this.email});
+
+  final String email;
 
   @override
   State<PinVerification> createState() => _PinVerificationState();
@@ -19,8 +19,8 @@ class PinVerification extends StatefulWidget {
 class _PinVerificationState extends State<PinVerification> {
   final TextEditingController _pinTEController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  bool _otpTaskVerifyInProgress = false;
-  EmailResponse _emailResponse = EmailResponse();
+  final PinVerificationController _pinVerificationController =
+      Get.find<PinVerificationController>();
 
   @override
   Widget build(BuildContext context) {
@@ -83,31 +83,29 @@ class _PinVerificationState extends State<PinVerification> {
                 ),
                 SizedBox(
                   width: double.infinity,
-                  child: Visibility(
-                    visible: _otpTaskVerifyInProgress == false,
-                    replacement: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          _getOtpTaskVerify(_pinTEController.text,
-                              _emailResponse.data?.accepted.first ?? '');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SetPassword(),
-                            ),
-                          );
-                        }
-                      },
-                      child: const Text(
-                        'Verify',
-                        style: TextStyle(
-                          color: Colors.white,
+                  child: GetBuilder<PinVerificationController>(
+                    builder: (pinVerificationController) {
+                      return Visibility(
+                        visible: _pinVerificationController.inProgress == false,
+                        replacement: const Center(
+                          child: CircularProgressIndicator(),
                         ),
-                      ),
-                    ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              _getOtpTaskVerify(
+                                  widget.email, _pinTEController.text);
+                            }
+                          },
+                          child: const Text(
+                            'Verify',
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
                   ),
                 ),
                 const SizedBox(
@@ -122,12 +120,13 @@ class _PinVerificationState extends State<PinVerification> {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SingIn(),
-                            ),
-                            (route) => false);
+                        Get.off(()=>const SingIn());
+                        // Navigator.pushAndRemoveUntil(
+                        //     context,
+                        //     MaterialPageRoute(
+                        //       builder: (context) => const SingIn(),
+                        //     ),
+                        //     (route) => false);
                       },
                       child: const Text(
                         'Sing in',
@@ -143,24 +142,27 @@ class _PinVerificationState extends State<PinVerification> {
     );
   }
 
-  Future<void> _getOtpTaskVerify(String accepted, String otp) async {
-    _otpTaskVerifyInProgress = true;
-    setState(() {});
-    final responce =
-        await NetWorkCaller.getRequest(Urls.recoverVerifyOTP(accepted, otp));
-    if (responce.isSuccess) {
-      responce.statusCode ==200;
-      _emailResponse =
-          EmailResponse.fromJson(responce.responseBody);
-      _emailResponse.data?.messageId ?? '';
-      _emailResponse.data?.accepted ?? '';
-      _otpTaskVerifyInProgress = false;
+  Future<void> _getOtpTaskVerify(String email, String otp) async {
+    final result = await _pinVerificationController.pinVerification(email, otp);
+    if (result) {
+      if (mounted) {
+        Get.to(()=>SetPassword(email: email, otp: _pinTEController.text.trim()));
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => SetPassword(
+        //       email: email,
+        //       otp: _pinTEController.text.trim(),
+        //     ),
+        //   ),
+        // );
+      }
     } else {
       if (mounted) {
-        setState(() {});
         snackBarMessage(
           context,
-          responce.errorMessage ?? 'Invalid your pin! please try again.',
+          _pinVerificationController.errorMessage,
+          true,
         );
       }
     }

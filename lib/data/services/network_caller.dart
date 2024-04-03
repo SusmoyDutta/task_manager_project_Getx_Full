@@ -15,6 +15,7 @@ class NetWorkCaller {
         'token': AuthController.accessToken ?? '',
         //token set kora holo get responce er vitore.
       });
+      log(response.request.toString());
       log(response.statusCode.toString());
       log(response.body.toString());
       if (response.statusCode == 200) {
@@ -24,7 +25,7 @@ class NetWorkCaller {
           statusCode: 200,
           responseBody: decodeResponce,
         );
-      } else if (response.statusCode == 400) {
+      } else if (response.statusCode == 401) {
         _moveToSingIn();
         return ResponseObject(
             isSuccess: false,

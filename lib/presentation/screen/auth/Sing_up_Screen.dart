@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
-import 'package:task_manager_project/data/models/response_object.dart';
-
+import 'package:get/get.dart';
 import 'package:task_manager_project/presentation/Widget/background_widget.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
+import 'package:task_manager_project/presentation/controllers/sin_up_controller.dart';
 import 'package:task_manager_project/presentation/screen/auth/Sing_in_screen.dart';
 import 'package:task_manager_project/presentation/utils/appColors.dart';
 
@@ -21,12 +19,16 @@ class _SingUpState extends State<SingUp> {
   final TextEditingController _lastTEController = TextEditingController();
   final TextEditingController _mobileTEController = TextEditingController();
   final TextEditingController _passwordTeController = TextEditingController();
+
   // globalKey die from check korbe
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   //password check korar jono
   bool _obscureTextTE = true;
+
   //progress indicator check kore
-  bool _isRegistrationInProgress = false;
+
+  final SingUpController _singUpController = Get.find<SingUpController>();
 
   @override
   Widget build(BuildContext context) {
@@ -158,24 +160,29 @@ class _SingUpState extends State<SingUp> {
                   ),
                   SizedBox(
                     width: double.infinity,
-                    child: Visibility(
-                      visible: _isRegistrationInProgress == false,
-                      replacement: const Center(
-                        child: CircularProgressIndicator(
-                          backgroundColor: AppColors.themeColors,
+                    child: GetBuilder<SingUpController>(
+                        builder: (singUpController) {
+                      return Visibility(
+                        visible: _singUpController.inProgress == false,
+                        replacement: const Center(
+                          child: CircularProgressIndicator(
+                            backgroundColor: AppColors.themeColors,
+                          ),
                         ),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _singIn();
-                        },
-                        child: const Icon(
-                          Icons.arrow_circle_right_outlined,
-                          color: Colors.white,
-                          size: 28,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              _singUp();
+                            }
+                          },
+                          child: const Icon(
+                            Icons.arrow_circle_right_outlined,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ),
                   const SizedBox(
                     height: 10,
@@ -189,12 +196,13 @@ class _SingUpState extends State<SingUp> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SingIn(),
-                              ),
-                              (route) => false);
+                          Get.off(()=>const SingIn(),);
+                          // Navigator.pushAndRemoveUntil(
+                          //     context,
+                          //     MaterialPageRoute(
+                          //       builder: (context) => const SingIn(),
+                          //     ),
+                          //     (route) => false);
                         },
                         child: const Text(
                           'Sing in',
@@ -211,33 +219,21 @@ class _SingUpState extends State<SingUp> {
     );
   }
 
-  void _singIn() async {
-    if (_formKey.currentState!.validate()) {
-      _isRegistrationInProgress = true;
-      setState(() {});
-      Map<String, dynamic> inputUserdata = {
-        "email": _emailTEController.text.trim(),
-        "firstName": _fastTEController.text.trim(),
-        "lastName": _lastTEController.text.trim(),
-        "mobile": _mobileTEController.text.trim(),
-        "password": _passwordTeController.text,
-      };
-      final ResponseObject responce = await NetWorkCaller.postRequest(
-        Urls.registration,
-        inputUserdata,
-      );
-      _isRegistrationInProgress = false;
-      setState(() {});
-      if (responce.isSuccess) {
-        if (mounted) {
-          snackBarMessage(context, 'Registration Success! Please Sine in.');
-          Navigator.pop(context);
-        }
-      } else {
-        if (mounted) {
-          snackBarMessage(
-              context, 'Registration Failed. Please Try again!', true);
-        }
+  Future<void> _singUp() async {
+    _singUpController.singUp(
+      _emailTEController.text.trim(),
+      _fastTEController.text.trim(),
+      _lastTEController.text.trim(),
+      _mobileTEController.text.trim(),
+      _passwordTeController.text,
+    );
+    if (mounted) {
+      snackBarMessage(context, _singUpController.successMessage);
+      Get.back();
+      // Navigator.pop(context);
+    } else {
+      if (mounted) {
+        snackBarMessage(context, _singUpController.errorMessage, true);
       }
     }
   }

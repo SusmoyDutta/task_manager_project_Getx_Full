@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/models/TaskList.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
+import 'package:get/get.dart';
+import 'package:task_manager_project/data/models/task_list.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
+import 'package:task_manager_project/presentation/controllers/delete_task_controller.dart';
+import 'package:task_manager_project/presentation/controllers/edit_task_controller.dart';
 import 'package:task_manager_project/presentation/utils/appColors.dart';
 
 class TaskCard extends StatefulWidget {
@@ -20,10 +21,9 @@ class TaskCard extends StatefulWidget {
   @override
   State<TaskCard> createState() => _TaskCardState();
 }
-
+final EditTaskController _editTaskController = Get.find<EditTaskController>();
+final DeleteTaskController _deleteTaskController = Get.find<DeleteTaskController>();
 class _TaskCardState extends State<TaskCard> {
-  bool _upDateStatusTaskInProgress = false;
-  bool _deleteTaskInProgress = false;
 
   @override
   Widget build(BuildContext context) {
@@ -65,31 +65,41 @@ class _TaskCardState extends State<TaskCard> {
                   color: widget.color,
                 ),
                 const Spacer(), //boro fakha rakhajai
-                Visibility(
-                  visible: _upDateStatusTaskInProgress == false,
-                  replacement: const CircularProgressIndicator(),
-                  child: IconButton(
-                    onPressed: () {
-                      _showUpDateSnackDialog(widget.taskItem.sId!);
-                    },
-                    icon: const Icon(
-                      Icons.edit_attributes_rounded,
-                      color: AppColors.themeColors,
-                    ),
-                  ),
+                GetBuilder<EditTaskController>(
+                  init: Get.find<EditTaskController>(),
+                  builder: (editTaskController) {
+                    return Visibility(
+                      visible: _editTaskController.inProgress == false,
+                      replacement: const CircularProgressIndicator(),
+                      child: IconButton(
+                        onPressed: () {
+                          _showUpDateSnackDialog(widget.taskItem.sId!);
+                        },
+                        icon: const Icon(
+                          Icons.edit_attributes_rounded,
+                          color: AppColors.themeColors,
+                        ),
+                      ),
+                    );
+                  }
                 ),
-                Visibility(
-                  visible: _deleteTaskInProgress == false,
-                  replacement: const CircularProgressIndicator(),
-                  child: IconButton(
-                    onPressed: () {
-                      _deleteTaskItem(widget.taskItem.sId!);
-                    },
-                    icon: const Icon(
-                      Icons.delete_sweep_rounded,
-                      color: Colors.red,
-                    ),
-                  ),
+                GetBuilder<DeleteTaskController>(
+                  init: Get.find<DeleteTaskController>(),
+                  builder: (deleteTaskController) {
+                    return Visibility(
+                      visible: _deleteTaskController.inProgress == false,
+                      replacement: const CircularProgressIndicator(),
+                      child: IconButton(
+                        onPressed: () {
+                          _deleteTaskItem(widget.taskItem.sId!);
+                        },
+                        icon: const Icon(
+                          Icons.delete_sweep_rounded,
+                          color: Colors.red,
+                        ),
+                      ),
+                    );
+                  }
                 ),
               ],
             ),
@@ -183,32 +193,25 @@ class _TaskCardState extends State<TaskCard> {
     return widget.taskItem.status! == status;
   }
   Future<void> _upDateTaskById(String id, String status) async {
-    _upDateStatusTaskInProgress = true;
-    setState(() {});
-    final responce =
-        await NetWorkCaller.getRequest(Urls.updateTaskStatus(id, status));
-    if (responce.isSuccess) {
-      _upDateStatusTaskInProgress = false;
+    final result = await _editTaskController.getEditTask(id, status);
+    if (result) {
       widget.refreshList();
     } else {
       setState(() {});
       if (mounted) {
-        snackBarMessage(context, 'Get new task list has been failed!');
+        snackBarMessage(context, _editTaskController.errorMessage);
       }
     }
   }
 
   Future<void> _deleteTaskItem(String id) async {
-    _deleteTaskInProgress = true;
-    setState(() {});
-    final responce = await NetWorkCaller.getRequest(Urls.deleteTask(id));
-    if (responce.isSuccess) {
+    final result = await _deleteTaskController.getDeleteTask(id);
+    if (result) {
       widget.refreshList();
-      _deleteTaskInProgress = false;
     } else {
       setState(() {});
       if (mounted) {
-        snackBarMessage(context, 'Delete Task has been failed!');
+        snackBarMessage(context, _deleteTaskController.errorMessage);
       }
     }
   }

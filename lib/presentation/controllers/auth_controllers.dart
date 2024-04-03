@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:task_manager_project/data/models/SingInUserData.dart';
+import 'package:task_manager_project/data/models/singIn_user_data.dart';
 
 class AuthController {
   static String? accessToken;

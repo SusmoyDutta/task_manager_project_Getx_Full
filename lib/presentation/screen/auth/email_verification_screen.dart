@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/models/AutoControlerEmailVerify.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
+import 'package:get/get.dart';
 import 'package:task_manager_project/presentation/Widget/background_widget.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
+import 'package:task_manager_project/presentation/controllers/email_verification_controller.dart';
 import 'package:task_manager_project/presentation/screen/auth/Pin_verification_screen.dart';
 import 'package:task_manager_project/presentation/screen/auth/Sing_in_screen.dart';
 
 class EmailVerification extends StatefulWidget {
-  const EmailVerification({super.key});
+  const EmailVerification({
+    super.key,
+  });
 
   @override
   State<EmailVerification> createState() => _EmailVerificationState();
@@ -17,7 +18,7 @@ class EmailVerification extends StatefulWidget {
 class _EmailVerificationState extends State<EmailVerification> {
   final TextEditingController _emailTEController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  bool _emailTaskScreenInProgress = false;
+ final EmailVerificationController _emailVerificationController = Get.find<EmailVerificationController>();
 
   @override
   Widget build(BuildContext context) {
@@ -67,29 +68,29 @@ class _EmailVerificationState extends State<EmailVerification> {
                   ),
                   SizedBox(
                     width: double.infinity,
-                    child: Visibility(
-                        visible: _emailTaskScreenInProgress ==false,
-                        replacement: const Center(child: CircularProgressIndicator(),),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _getEmailTask(
-                              _emailTEController.text.trim(),
-                            );
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const PinVerification(),
-                              ),
-                            );
-                          }
-                        },
-                        child: const Icon(
-                          Icons.arrow_circle_right_outlined,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
+                    child: GetBuilder<EmailVerificationController>(
+                      builder: (emailVerificationController) {
+                        return Visibility(
+                          visible: _emailVerificationController.inProgress == false,
+                          replacement: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                _getEmailTask(
+                                  _emailTEController.text.trim(),
+                                );
+                              }
+                            },
+                            child: const Icon(
+                              Icons.arrow_circle_right_outlined,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        );
+                      }
                     ),
                   ),
                   const SizedBox(
@@ -104,13 +105,14 @@ class _EmailVerificationState extends State<EmailVerification> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SingIn(),
-                            ),
-                            (route) => false,
-                          );
+                          Get.off(()=>const SingIn());
+                          // Navigator.pushAndRemoveUntil(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (context) => const SingIn(),
+                          //   ),
+                          //   (route) => false,
+                          // );
                         },
                         child: const Text(
                           'Sing in',
@@ -127,23 +129,26 @@ class _EmailVerificationState extends State<EmailVerification> {
     );
   }
 
-  Future<void> _getEmailTask(String accepted) async {
-    _emailTaskScreenInProgress = true;
-    setState(() {});
-    final responce =
-        await NetWorkCaller.getRequest(Urls.recoverVerifyEmail(accepted));
-    if (responce.isSuccess) {
-      _emailTaskScreenInProgress == false;
-      EmailResponse emailResponse =
-          EmailResponse.fromJson(responce.responseBody);
-      emailResponse.data?.accepted.first ?? '';
-    } else {
-      _emailTaskScreenInProgress == false;
-      setState(() {});
+  Future<void> _getEmailTask(String email) async {
+    final result = await _emailVerificationController.emailVerification(email);
+
+    if (result) {
       if (mounted) {
-        snackBarMessage(context, 'Sing in Field! Please Try agan.', true);
+        Get.to(()=>PinVerification(email: email));
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => PinVerification(
+        //       email: email,
+        //     ),
+        //   ),
+        // );
       }
-    }  //wijefi3167@azduan.com
+    } else {
+      if (mounted) {
+        snackBarMessage(context, _emailVerificationController.errorMessages, true);
+      }
+    } //wijefi3167@azduan.com
   }
 
   @override

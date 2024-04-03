@@ -1,15 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/models/SingInUserData.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
 import 'package:task_manager_project/presentation/Widget/Profile_App_Bar.dart';
 import 'package:task_manager_project/presentation/Widget/background_widget.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
 import 'package:task_manager_project/presentation/controllers/auth_controllers.dart';
+import 'package:task_manager_project/presentation/controllers/update_profile_task_controller.dart';
 import 'package:task_manager_project/presentation/screen/navigator_app_bar.dart';
 
 class UpdateProfile extends StatefulWidget {
@@ -28,7 +24,9 @@ class _UpdateProfileState extends State<UpdateProfile> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _obscureTextTE = true;
   XFile? _pickerImage;
-  bool _upDateProfileInProgress = false;
+
+  final UpdateProfileTaskController _updateProfileTaskController =
+      Get.find<UpdateProfileTaskController>();
 
   @override
   void initState() {
@@ -167,19 +165,27 @@ class _UpdateProfileState extends State<UpdateProfile> {
                   ),
                   SizedBox(
                     width: double.infinity,
-                    child: Visibility(
-                      visible: _upDateProfileInProgress == false,
-                      replacement: const CircularProgressIndicator(),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _upDateProfile();
-                        },
-                        child: const Icon(
-                          color: Colors.white,
-                          Icons.arrow_circle_right_outlined,
+                    child: GetBuilder<UpdateProfileTaskController>(
+                        builder: (updateProfileTaskController) {
+                      WidgetsBinding.instance
+                          .addPersistentFrameCallback((timeStamp) {
+                        UpdateProfileTaskController();
+                      });
+                      return Visibility(
+                        visible:
+                            _updateProfileTaskController.inProgress == false,
+                        replacement: const CircularProgressIndicator(),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _upDateProfile();
+                          },
+                          child: const Icon(
+                            color: Colors.white,
+                            Icons.arrow_circle_right_outlined,
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   )
                 ],
               ),
@@ -258,56 +264,59 @@ class _UpdateProfileState extends State<UpdateProfile> {
   }
 
   Future<void> _upDateProfile() async {
-    String? photo;
+    _updateProfileTaskController.getUpdateProfile(
+        _emailTEController.text.trim(),
+        _fastNameTEController.text.trim(),
+        _lastNameTEController.text.trim(),
+        _mobileTEController.text.trim(),
+        _passwordTEController.text);
+    //String? photo;
 
-    _upDateProfileInProgress = true;
-    setState(() {});
-
-    Map<String, dynamic> inputParams = {
-      "email": _emailTEController.text,
-      "firstName": _fastNameTEController.text.trim(),
-      "lastName": _lastNameTEController.text.trim(),
-      "mobile": _mobileTEController.text.trim(),
-    };
-
-    if (_passwordTEController.text.isNotEmpty) {
-      inputParams['password'] = _passwordTEController.text;
-    }
-
-    if (_pickerImage != null) {
-      List<int> bytes = File(_pickerImage!.path).readAsBytesSync();
-      photo = base64Encode(bytes);
-      inputParams['photo'] = photo;
-    }
-
-    final response = await NetWorkCaller.postRequest(Urls.profileUpdate, inputParams);
-    _upDateProfileInProgress = false;
-    if (response.isSuccess) {
-      if (response.responseBody['status'] == 'success') {
-        UserData userData = UserData(
-          email: _emailTEController.text,
-          firstName: _fastNameTEController.text.trim(),
-          lastName: _lastNameTEController.text.trim(),
-          mobile: _mobileTEController.text.trim(),
-          photo: photo,
-        );
-        await AuthController.saveUserData(userData);
-      }
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(context,
-            MaterialPageRoute(builder: (context) => const NavBarScreen()), (
-                route) => false);
-      }
+    // _upDateProfileInProgress = true;
+    // setState(() {});
+    //
+    // Map<String, dynamic> inputParams = {
+    //   "email": _emailTEController.text,
+    //   "firstName": _fastNameTEController.text.trim(),
+    //   "lastName": _lastNameTEController.text.trim(),
+    //   "mobile": _mobileTEController.text.trim(),
+    // };
+    //
+    // if (_passwordTEController.text.isNotEmpty) {
+    //   inputParams['password'] = _passwordTEController.text;
+    // }
+    // if (_pickerImage != null) {
+    //   List<int> bytes = File(_pickerImage!.path).readAsBytesSync();
+    //   photo = base64Encode(bytes);
+    //   inputParams['photo'] = photo;
+    // }
+    //
+    // final response = await NetWorkCaller.postRequest(Urls.profileUpdate, inputParams);
+    // _upDateProfileInProgress = false;
+    // if (response.isSuccess) {
+    //   if (response.responseBody['status'] == 'success') {
+    //     UserData userData = UserData(
+    //       email: _emailTEController.text,
+    //       firstName: _fastNameTEController.text.trim(),
+    //       lastName: _lastNameTEController.text.trim(),
+    //       mobile: _mobileTEController.text.trim(),
+    //       photo: photo,
+    //     );
+    //     await AuthController.saveUserData(userData);
+    //   }
+    if (mounted) {
+      Get.off(() => const NavBarScreen());
+      // Navigator.pushAndRemoveUntil(context,
+      //     MaterialPageRoute(builder: (context) => const NavBarScreen()), (
+      //         route) => false);
     } else {
       if (!mounted) {
         return;
       }
       setState(() {});
-      snackBarMessage(context, 'Update profile failed! Try again.');
+      snackBarMessage(context, _updateProfileTaskController.errorMessage);
     }
   }
-
-
 
   @override
   void dispose() {

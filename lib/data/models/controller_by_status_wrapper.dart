@@ -1,4 +1,4 @@
-import 'package:task_manager_project/data/models/TaskByStatusData.dart';
+import 'package:task_manager_project/data/models/task_by_status_data.dart';
 
 class CountByStatusWrapper {
   String? status;

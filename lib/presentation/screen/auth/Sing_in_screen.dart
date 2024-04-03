@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/data/Utility/Url.dart';
-import 'package:task_manager_project/data/models/sinin_response.dart';
-import 'package:task_manager_project/data/services/network_caller.dart';
-import 'package:task_manager_project/data/models/response_object.dart';
-
+import 'package:get/get.dart';
 import 'package:task_manager_project/presentation/Widget/background_widget.dart';
 import 'package:task_manager_project/presentation/Widget/snack_Bar_Message.dart';
-import 'package:task_manager_project/presentation/controllers/auth_controllers.dart';
+import 'package:task_manager_project/presentation/controllers/sing_in_controller.dart';
 import 'package:task_manager_project/presentation/screen/auth/Sing_up_Screen.dart';
 import 'package:task_manager_project/presentation/screen/auth/email_verification_screen.dart';
 import 'package:task_manager_project/presentation/screen/navigator_app_bar.dart';
@@ -25,7 +21,7 @@ class _SingInState extends State<SingIn> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _obscureTextTE = true;
-  bool _isInProgress = false;
+  final SingInController _singInController = Get.find<SingInController>();
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +50,7 @@ class _SingInState extends State<SingIn> {
                     keyboardType: TextInputType.emailAddress,
                     validator: (String? value) {
                       if (value?.trim().isEmpty ?? true) {
-                        return;
+                        return'Enter your Email';
                       }
                       return null;
                     },
@@ -102,23 +98,29 @@ class _SingInState extends State<SingIn> {
                   ),
                   SizedBox(
                     width: double.infinity,
-                    child: Visibility(
-                      visible: _isInProgress == false,
-                      replacement: const Center(
-                        child: CircularProgressIndicator(
-                          backgroundColor: AppColors.themeColors,
-                        ),
-                      ),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          singIn();
-                        },
-                        child: const Icon(
-                          Icons.arrow_circle_right_outlined,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
+                    child: GetBuilder<SingInController>(
+                      builder: (singInController) {
+                        return Visibility(
+                          visible: _singInController.inProgress == false,
+                          replacement: const Center(
+                            child: CircularProgressIndicator(
+                              backgroundColor: AppColors.themeColors,
+                            ),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                singIn();
+                              }
+                            },
+                            child: const Icon(
+                              Icons.arrow_circle_right_outlined,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(
@@ -127,12 +129,13 @@ class _SingInState extends State<SingIn> {
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const EmailVerification(),
-                          ),
-                        );
+                        Get.to(()=>const EmailVerification());
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(
+                        //     builder: (context) => const EmailVerification(),
+                        //   ),
+                        // );
                       },
                       child: Text(
                         'Forget Password',
@@ -154,12 +157,13 @@ class _SingInState extends State<SingIn> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SingUp(),
-                            ),
-                          );
+                          Get.off(()=>const SingUp());
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (context) => const SingUp(),
+                          //   ),
+                          // );
                         },
                         child: const Text(
                           'Sing up',
@@ -177,38 +181,28 @@ class _SingInState extends State<SingIn> {
   }
 
   Future<void> singIn() async {
-    _isInProgress = true;
-    setState(() {});
-    Map<String, dynamic> inputData = {
-      "email": _emailTEController.text.trim(),
-      "password": _passwordTeController.text,
-    };
-    final ResponseObject response = await NetWorkCaller.postRequest(
-      Urls.login,
-      inputData,
-      fromSinIn: true,
+    final result = await _singInController.singIn(
+      _emailTEController.text.trim(),
+      _passwordTeController.text,
     );
-    _isInProgress = false;
-    setState(() {});
-    if (response.isSuccess) {
-      if (!mounted) {
-        return;
-      }
-      SingInResponce singInResponce =
-          SingInResponce.fromJson(response.responseBody);
-      await AuthController.saveUserData(singInResponce.userData!);
-      await AuthController.saveUserToken(singInResponce.token!);
+
+    if (result) {
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const NavBarScreen(),
-            ),
-            (route) => false);
+        Get.off(()=>const NavBarScreen(),);
+        // Navigator.pushAndRemoveUntil(
+        //     context,
+        //     MaterialPageRoute(
+        //       builder: (context) => const NavBarScreen(),
+        //     ),
+        //     (route) => false);
       }
     } else {
       if (mounted) {
-        snackBarMessage(context, 'Sing in Field! Please Try agan.', true);
+        snackBarMessage(
+          context,
+          _singInController.errorMessage,
+          true,
+        );
       }
     }
   }

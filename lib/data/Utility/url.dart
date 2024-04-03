@@ -10,8 +10,8 @@ class Urls {
   static String progressListTaskByStatus = '$_baseUrl/listTaskByStatus/Progress';
   static String deleteTask(String id) => '$_baseUrl/deleteTask/$id';
   static String updateTaskStatus(String id, String status) => '$_baseUrl/updateTaskStatus/$id/$status';
-  static String recoverVerifyOTP(String accepted, String otp) => '$_baseUrl/RecoverVerifyOTP/$accepted/$otp';
-  static String recoverVerifyEmail(String accepted,) => '$_baseUrl/RecoverVerifyEmail/$accepted';
+  static String recoverVerifyOTP(String email, String otp) => '$_baseUrl/RecoverVerifyOTP/$email/$otp';
+  static String recoverVerifyEmail(String email,) => '$_baseUrl/RecoverVerifyEmail/$email';
   static String recoverResetPass = '$_baseUrl/RecoverResetPass';
   static String profileUpdate = '$_baseUrl/profileUpdate';
 }
